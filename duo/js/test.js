@@ -89,9 +89,9 @@ const potToGate = pot => GATE_MIN_MS + pot / 1023 * (GATE_MAX_MS - GATE_MIN_MS);
 const TESTS = [
   { id: 'firmware', label: 'Firmware version', type: 'firmware' },
   { id: 'serial',   label: 'Serial number',    type: 'serial' },
-  { id: 'release',  label: 'Release',  type: 'cc', cc: 72, rest: REST_CENTER },
-  { id: 'freq',     label: 'Freq',     type: 'cc', cc: 74, rest: REST_CENTER },
-  { id: 'wave',     label: 'Wave',     type: 'cc', cc: 70, rest: REST_CENTER },
+  { id: 'release',  label: 'Release',  type: 'cc', cc: 72, rest: REST_LOW },
+  { id: 'freq',     label: 'Freq',     type: 'cc', cc: 74, rest: REST_LOW },
+  { id: 'wave',     label: 'Wave',     type: 'cc', cc: 70, rest: REST_LOW },
   { id: 'res',      label: 'Res',      type: 'cc', cc: 71, rest: REST_CENTER },
   { id: 'amp',      label: 'Amp',      type: 'cc', cc: 7,  rest: REST_CENTER },
   { id: 'detune',   label: 'Detune',   type: 'cc', cc: 94, rest: REST_CENTER },
