@@ -16,7 +16,7 @@
 
 import { initMIDI } from '../../shared/js/midi.js';
 import { applyCC } from '../../shared/js/faceplate.js';
-import { createTestRunner, setElState, CC_MAX, REST_CENTER, REST_LOW } from '../../shared/js/test-runner.js';
+import { createTestRunner, setElState, CC_MAX, REST_CENTER, REST_LOW, REST_HIGH } from '../../shared/js/test-runner.js';
 import { DUO, resetTranspose } from './device.js';
 import { initVisualizer } from './visualizer.js';
 import { CC_CONTROLS, KEY_NOTES, KEY_IDS, SPEED_KNOB, LENGTH_KNOB } from './controls.js';
@@ -92,9 +92,9 @@ const TESTS = [
   { id: 'release',  label: 'Release',  type: 'cc', cc: 72, rest: REST_LOW },
   { id: 'freq',     label: 'Freq',     type: 'cc', cc: 74, rest: REST_LOW },
   { id: 'wave',     label: 'Wave',     type: 'cc', cc: 70, rest: REST_LOW },
-  { id: 'res',      label: 'Res',      type: 'cc', cc: 71, rest: REST_CENTER },
-  { id: 'amp',      label: 'Amp',      type: 'cc', cc: 7,  rest: REST_CENTER },
-  { id: 'detune',   label: 'Detune',   type: 'cc', cc: 94, rest: REST_CENTER },
+  { id: 'res',      label: 'Res',      type: 'cc', cc: 71, rest: REST_LOW },
+  { id: 'amp',      label: 'Amp',      type: 'cc', cc: 7,  rest: REST_HIGH },
+  { id: 'detune',   label: 'Detune',   type: 'cc', cc: 94, rest: REST_LOW },
   { id: 'crush',    label: 'Crush',    type: 'cc', cc: 81, rest: REST_LOW, half: true },
   { id: 'delay',    label: 'Delay',    type: 'cc', cc: 80, rest: REST_LOW, half: true },
   { id: 'glide',    label: 'Glide',    type: 'cc', cc: 65, rest: REST_LOW, half: true },

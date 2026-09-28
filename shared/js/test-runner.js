@@ -38,7 +38,8 @@ export const CC_MAX = 127;
 
 // Rest windows [lo, hi] (inclusive): where a control must be left for the test to pass.
 export const REST_CENTER = [59, 67]; // sliders / pots returned to the middle
-export const REST_LOW = [0, 4];      // buttons / pads released, sliders at their low end
+export const REST_LOW = [0, 4];      // buttons / pads released, sliders / pots at their low end
+export const REST_HIGH = [123, 127]; // sliders / pots at their high end
 
 const FACEPLATE_STATES = ['test-idle', 'test-active', 'test-done'];
 
