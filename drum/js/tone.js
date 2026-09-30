@@ -16,6 +16,7 @@ const TONE_MIN_HZ = 110;
 const TONE_OCTAVES = 4;
 const TONE_GAIN = 0.5;
 const RAMP_S = 0.02; // short fade in/out to avoid clicks on toggle
+const GLIDE_S = 0.01; // pitch glide time constant
 
 let ctx = null;
 let gain = null;
@@ -23,6 +24,7 @@ let osc = null;
 let buttonEl = null;
 let frequency = TONE_MIN_HZ * 2 ** (TONE_OCTAVES * 64 / 127);
 let playing = false;
+let glidePending = false;
 
 /** Wire the toggle button. Audio is created lazily on the first click (user gesture). */
 export function initTone(el) {
@@ -31,10 +33,33 @@ export function initTone(el) {
   updateButton();
 }
 
-/** Set the tone frequency from a 0–127 CC value. */
+/**
+ * Set the tone frequency from a 0–127 CC value. A fast slider move sends a
+ * burst of CCs; scheduling an automation event for each one piles them up on
+ * the audio thread, which garbles the sound on slower machines. Instead keep
+ * only the latest value and glide to it at most once per animation frame.
+ */
 export function setToneCC(value) {
   frequency = TONE_MIN_HZ * 2 ** (TONE_OCTAVES * value / 127);
-  if (osc) osc.frequency.setTargetAtTime(frequency, ctx.currentTime, 0.01);
+  if (osc && !glidePending) {
+    glidePending = true;
+    requestAnimationFrame(glideToFrequency);
+  }
+}
+
+function glideToFrequency() {
+  glidePending = false;
+  const f = osc.frequency;
+  const t = ctx.currentTime;
+  // Drop the previous glide and hold the current pitch, so the timeline never
+  // holds more than one pending event.
+  if (f.cancelAndHoldAtTime) {
+    f.cancelAndHoldAtTime(t);
+  } else {
+    f.cancelScheduledValues(t);
+    f.setValueAtTime(f.value, t);
+  }
+  f.setTargetAtTime(frequency, t, GLIDE_S);
 }
 
 export function muteTone() {
@@ -53,7 +78,9 @@ function setTonePlaying(on) {
 }
 
 function createAudio() {
-  ctx = new AudioContext();
+  // A test tone doesn't need low latency; a larger buffer rides out CPU
+  // hiccups on the older production Macs without underrunning.
+  ctx = new AudioContext({ latencyHint: 'playback' });
   gain = ctx.createGain();
   gain.gain.value = 0;
   gain.connect(ctx.destination);
