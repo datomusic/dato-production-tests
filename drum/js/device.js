@@ -78,7 +78,12 @@ function decodeVersion(payload) {
 }
 
 export const DRUM = {
+  id: 'drum',
   name: 'DRUM',
+
+  matches(data) {
+    return data.length > SYSEX_HEADER.length && SYSEX_HEADER.every((b, i) => data[i] === b);
+  },
 
   requestFirmwareVersion() {
     send([TAG_FIRMWARE_VERSION_REQUEST]);
@@ -95,10 +100,7 @@ export const DRUM = {
   },
 
   parseSysEx(data) {
-    if (data.length < SYSEX_HEADER.length + 1) return;
-    for (let i = 0; i < SYSEX_HEADER.length; i++) {
-      if (data[i] !== SYSEX_HEADER[i]) return;
-    }
+    if (!this.matches(data)) return;
     const tag = data[SYSEX_HEADER.length];
     const payloadStart = SYSEX_HEADER.length + 1;
     const payload = data.slice(payloadStart, data.length - 1); // strip trailing F7

@@ -10,6 +10,7 @@
 import { initMIDI } from '../../shared/js/midi.js';
 import { createTestRunner, setElState, REST_CENTER, REST_LOW } from '../../shared/js/test-runner.js';
 import { DRUM } from './device.js';
+import { DUO } from '../../duo/js/device.js';
 import { initVisualizer } from './visualizer.js';
 import { initTone, setToneCC, muteTone } from './tone.js';
 import { CC_CONTROLS, NOTE_CONTROLS, STEP_LED_IDS, TRACK_STEP_MAP } from './controls.js';
@@ -210,7 +211,12 @@ const statusEl = document.getElementById('midi-status');
 
 initVisualizer();
 initTone(document.getElementById('tone-toggle'));
-initMIDI(statusEl, DRUM);
+initMIDI(statusEl, DRUM, [DUO]);
+
+// Another instrument was plugged in: switch to its test
+document.addEventListener('midi-other-device', e => {
+  location.replace(`../${e.detail.id}/test.html${location.search}`);
+});
 
 const runner = createTestRunner({
   tests: TESTS,

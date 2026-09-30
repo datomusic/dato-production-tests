@@ -54,8 +54,19 @@ function decodeSerial(payload) {
   return words.join('-');
 }
 
+/** Index of the 7D after F0 (skipping the extra 00 the DUO sends over USB), or -1. */
+function headerStart(data) {
+  const start = data[1] === 0x00 ? 2 : 1;
+  return data[start] === SYSEX_HEADER[1] && data[start + 1] === SYSEX_HEADER[2] ? start : -1;
+}
+
 export const DUO = {
+  id: 'duo',
   name: 'DUO',
+
+  matches(data) {
+    return headerStart(data) >= 0;
+  },
 
   // Called on every retry until a version arrives, so the serial request rides along.
   requestFirmwareVersion() {
@@ -66,14 +77,18 @@ export const DUO = {
   // Start every test from a known state: sequencer stopped (the DUO obeys MIDI
   // Stop) and keyboard untransposed, so key notes are the plain scale.
   onConnected() {
-    serialReceived = false;
     sendMessage([MIDI_STOP]);
     resetTranspose();
   },
 
+  // onConnected() only runs once the DUO has answered, so the flag is cleared here
+  onDisconnected() {
+    serialReceived = false;
+  },
+
   parseSysEx(data) {
-    const start = data[1] === 0x00 ? 2 : 1; // skip the extra 00 the DUO sends over USB
-    if (data[start] !== SYSEX_HEADER[1] || data[start + 1] !== SYSEX_HEADER[2]) return;
+    const start = headerStart(data);
+    if (start < 0) return;
     const payload = data.slice(start + 2, data.length - 1); // strip trailing F7
     if (payload.length === FIRMWARE_PAYLOAD_LENGTH) {
       return `v${payload[0]}.${payload[1]}.${payload[2]}`;

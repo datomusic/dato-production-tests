@@ -25,6 +25,8 @@ No build step and no framework. One folder per instrument (`drum/`, `duo/`) plus
 
 **`shared/js/midi.js`** owns all Web MIDI API interaction and dispatches typed events (`midi-cc`, `midi-note-on`, `midi-note-off`, `midi-clock`, `midi-transport`, `midi-firmware-version`, `midi-connected`, …). Everything instrument-specific goes through a **device profile** (`drum/js/device.js`, `duo/js/device.js`): firmware request, SysEx parsing, extra requests/polling on connect.
 
+**Autodetect:** each test page passes the other instrument's profile to `initMIDI` as well. On connect both firmware version requests go out; the dialect of the reply identifies the device. The page's own profile only runs `onConnected()` once its device has answered (or the retries run out); if the other one answers, `midi-other-device` fires and the page `location.replace`s to that instrument's `test.html`. So plugging a DUO into an open DRUM test (or vice versa) switches pages.
+
 **`shared/js/test-runner.js`** is the production test list: one row per test, fill band, rest zone, cursor, pass "punch", faceplate state classes (`.test-idle/.test-active/.test-done`). Built-in test types: `firmware`, `serial`, `cc`. Instruments add their own types as hook objects (see the header comment) — the DRUM adds `notes`, `pad`, `sequencer`; the DUO adds `accent`, `keys`, `transpose`, `play`.
 
 **`shared/js/faceplate.js`** `applyCC(ctrl, value)` moves a knob/slider/button described in an instrument's `controls.js`.
@@ -44,7 +46,7 @@ The source SVGs have no semantic IDs (and are gitignored — `*.svg`).
 - Firmware source: `duo-imxrt` repo (`shared/duo/`, `brains2/apps/duo/`). `duo/firmware/MidiFunctions.h` is a reference copy.
 - Over USB the DUO's SysEx replies carry an extra `00` after `F0` (`F0 00 7D 64 …`); `duo/js/device.js` accepts both forms and tells replies apart by payload length.
 - Only the synth side sends CCs. Speed is derived from MIDI clock (always sent, internal tempo), Length from note gate time while the sequencer runs. Random, Boost and step buttons send nothing and are untested.
-- On connect the page sends MIDI Stop and reset-transpose so tests start from a known state.
+- Once the DUO has answered the version request, the page sends MIDI Stop and reset-transpose so tests start from a known state.
 
 ## Known gaps
 

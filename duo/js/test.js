@@ -18,6 +18,7 @@ import { initMIDI } from '../../shared/js/midi.js';
 import { applyCC } from '../../shared/js/faceplate.js';
 import { createTestRunner, setElState, CC_MAX, REST_CENTER, REST_LOW, REST_HIGH } from '../../shared/js/test-runner.js';
 import { DUO, resetTranspose } from './device.js';
+import { DRUM } from '../../drum/js/device.js';
 import { initVisualizer } from './visualizer.js';
 import { CC_CONTROLS, KEY_NOTES, KEY_IDS, SPEED_KNOB, LENGTH_KNOB } from './controls.js';
 
@@ -189,7 +190,12 @@ const TYPES = {
 const statusEl = document.getElementById('midi-status');
 
 initVisualizer();
-initMIDI(statusEl, DUO);
+initMIDI(statusEl, DUO, [DRUM]);
+
+// Another instrument was plugged in: switch to its test
+document.addEventListener('midi-other-device', e => {
+  location.replace(`../${e.detail.id}/test.html${location.search}`);
+});
 
 // Measurement state, cleared with the test list
 let clockTimes = [];

@@ -15,23 +15,39 @@
  *   'midi-firmware-version' detail: { version }
  *   'midi-connected'        detail: { name }
  *   'midi-disconnected'     detail: { name }
+ *   'midi-other-device'     detail: { id, name }  one of the other profiles answered instead
  * `time` is the message's DOMHighResTimeStamp (ms). Device profiles dispatch
  * their own SysEx-derived events through dispatch().
  *
  * Device profile:
+ *   id                         'drum' / 'duo' (the instrument's folder)
  *   name                       shown in the "plug in the …" status message
  *   requestFirmwareVersion()   send the firmware version request (retried until answered)
- *   onConnected()              optional: further requests / polling once connected
+ *   matches(data)              is this SysEx message in the profile's dialect?
+ *   onConnected()              optional: further requests / polling, once the device
+ *                              has identified itself
  *   onDisconnected()           optional: stop polling
  *   parseSysEx(data)           handle an incoming SysEx message; return the version
  *                              string if it was a firmware version response
+ *
+ * Autodetect: initMIDI() may also be given the profiles of other instruments.
+ * On connect their firmware version requests are sent along with the page's own;
+ * the dialect of the first reply tells which instrument is plugged in. The page's
+ * own device is only set up (onConnected) once it has answered; if another one
+ * answers, 'midi-other-device' is dispatched so the page can switch.
  */
 
 let midiAccess = null;
 let device = null;
+let otherDevices = [];
 let deviceName = null;
 let firmwareVersion = null;
 let statusElement = null;
+
+// Per connection: the profile whose dialect answered first (null until then),
+// and whether the page's own device has been set up with onConnected().
+let identified = null;
+let started = false;
 
 /** Send a raw MIDI message (e.g. a complete F0 … F7 SysEx) to every connected output. */
 export function sendMessage(msg) {
@@ -54,12 +70,20 @@ function requestFirmwareVersionWithRetry() {
   stopVersionRetry();
   let attempts = 0;
   const attempt = () => {
-    if (firmwareVersion !== null || attempts >= VERSION_RETRY_MAX) {
+    if (firmwareVersion !== null || (identified && identified !== device)) {
       stopVersionRetry();
+      return;
+    }
+    if (attempts >= VERSION_RETRY_MAX) {
+      stopVersionRetry();
+      // Nothing answered: carry on as the page's own device, as before autodetect
+      startDevice();
       return;
     }
     attempts++;
     device.requestFirmwareVersion();
+    // Probe the other instruments until something answers
+    if (!identified) for (const other of otherDevices) other.requestFirmwareVersion();
   };
   attempt();
   versionRetryTimer = setInterval(attempt, VERSION_RETRY_INTERVAL_MS);
@@ -72,9 +96,22 @@ function stopVersionRetry() {
   }
 }
 
-export async function initMIDI(statusEl, deviceProfile) {
+/** Set up the page's own device (once per connection). */
+function startDevice() {
+  if (started) return;
+  started = true;
+  device.onConnected?.();
+}
+
+/**
+ * @param {Element}  statusEl       status line
+ * @param {object}   deviceProfile  the page's instrument
+ * @param {object[]} [others]       other instruments to recognise (see Autodetect above)
+ */
+export async function initMIDI(statusEl, deviceProfile, others = []) {
   statusElement = statusEl;
   device = deviceProfile;
+  otherDevices = others;
   if (!navigator.requestMIDIAccess) {
     setStatus('Web MIDI API not supported in this browser.');
     return;
@@ -88,8 +125,9 @@ export async function initMIDI(statusEl, deviceProfile) {
   }
 
   function onConnected() {
+    identified = null;
+    started = false;
     requestFirmwareVersionWithRetry();
-    device.onConnected?.();
   }
 
   function attachInputs() {
@@ -105,7 +143,8 @@ export async function initMIDI(statusEl, deviceProfile) {
       dispatch('midi-connected', { name: names });
       onConnected();
     } else {
-      setStatus(`No MIDI input – plug in the ${device.name}`);
+      const names = [device, ...otherDevices].map(p => p.name).join(' or ');
+      setStatus(`No MIDI input – plug in a ${names}`);
     }
   }
 
@@ -115,7 +154,7 @@ export async function initMIDI(statusEl, deviceProfile) {
     const port = e.port;
     if (port.type === 'output') {
       // Output port came up after the input: (re)send the initial requests now
-      if (port.state === 'connected' && deviceName && firmwareVersion === null) onConnected();
+      if (port.state === 'connected' && deviceName && !identified) onConnected();
       return;
     }
     if (port.state === 'connected') {
@@ -130,6 +169,8 @@ export async function initMIDI(statusEl, deviceProfile) {
       stopVersionRetry();
       deviceName = null;
       firmwareVersion = null;
+      identified = null;
+      started = false;
       setStatus(`Disconnected: ${port.name}`);
       dispatch('midi-disconnected', { name: port.name });
     }
@@ -142,6 +183,15 @@ function updateConnectedStatus() {
 }
 
 function onSysEx(data) {
+  const other = otherDevices.find(p => p.matches(data));
+  if (other) {
+    onOtherDevice(other);
+    return;
+  }
+  if (!identified && device.matches(data)) {
+    identified = device;
+    startDevice();
+  }
   const version = device.parseSysEx(data);
   if (version == null) return;
   firmwareVersion = version;
@@ -149,6 +199,18 @@ function onSysEx(data) {
   console.log(`sysex: firmware version ${firmwareVersion}`);
   updateConnectedStatus();
   dispatch('midi-firmware-version', { version: firmwareVersion });
+}
+
+/** Another instrument answered: stop talking to it and let the page switch. */
+function onOtherDevice(other) {
+  if (identified === other) return;
+  identified = other;
+  stopVersionRetry();
+  if (started) device.onDisconnected?.();
+  started = false;
+  console.log(`sysex: ${other.name} answered – not a ${device.name}`);
+  setStatus(`${other.name} connected`);
+  dispatch('midi-other-device', { id: other.id, name: other.name });
 }
 
 function onMessage(e) {
