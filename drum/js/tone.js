@@ -26,9 +26,25 @@ let frequency = TONE_MIN_HZ * 2 ** (TONE_OCTAVES * 64 / 127);
 let playing = false;
 let glidePending = false;
 
-/** Wire the toggle button. Audio is created lazily on the first click (user gesture). */
-export function initTone(el) {
-  buttonEl = el;
+// Speaker icon: muted shows the slash, playing shows the waves (css/test.css)
+const BUTTON_HTML = `
+  <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M11 5 6 9H2v6h4l5 4z" />
+    <path class="tone-wave" d="M15.5 8.5a5 5 0 0 1 0 7" />
+    <path class="tone-wave" d="M19 5.5a10 10 0 0 1 0 13" />
+    <line class="tone-slash" x1="3" y1="21" x2="21" y2="3" />
+  </svg>`;
+
+/**
+ * Add the toggle button to `containerEl` (bottom right of the faceplate pane).
+ * Audio is created lazily on the first click (user gesture).
+ */
+export function initTone(containerEl) {
+  buttonEl = document.createElement('button');
+  buttonEl.id = 'tone-toggle';
+  buttonEl.type = 'button';
+  buttonEl.innerHTML = BUTTON_HTML;
+  containerEl.append(buttonEl);
   buttonEl.addEventListener('click', () => setTonePlaying(!playing));
   updateButton();
 }

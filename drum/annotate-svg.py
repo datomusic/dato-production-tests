@@ -2,7 +2,8 @@
 annotate-svg.py
 One-time script to add semantic IDs and classes to the raw Dato DRUM SVG.
 Identifies elements by fill color, position relative to center (1105, 1105), and explicit IDs.
-Outputs dato-drum-faceplate-annotated.svg.
+Writes faceplate.svg (loaded by the production test, see shared/js/test-page.js)
+and inlines it into index.html (the MIDI visualizer).
 """
 
 import re
@@ -270,7 +271,7 @@ if __name__ == '__main__':
         print("Usage: python3 annotate-svg.py <input.svg>", file=sys.stderr)
         sys.exit(1)
     svg_in = sys.argv[1]
-    svg_out = os.path.join(base, 'dato-drum-faceplate-annotated.svg')
+    svg_out = os.path.join(base, 'faceplate.svg')
     annotate(svg_in, svg_out)
     inline_svg(
         os.path.join(base, 'index.html'),

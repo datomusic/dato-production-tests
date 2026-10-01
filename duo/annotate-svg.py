@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 """
 Annotate the DUO faceplate SVG (a Figma export without IDs) with semantic IDs
-and classes, then inline it into test.html.
+and classes, for the production test page.
 
     python3 annotate-svg.py [duo-faceplate.svg]
 
-Elements are recognised by shape, fill and position. Writes
-duo-faceplate-annotated.svg and replaces the SVG between the
-<!-- faceplate:start --> / <!-- faceplate:end --> markers in test.html.
+Elements are recognised by shape, fill and position. Writes faceplate.svg,
+which shared/js/test-page.js loads into the page.
 
 The DUO is played from two sides: the synth half (top of the drawing) is
 drawn upside down for the second player.
@@ -147,24 +146,9 @@ def annotate(src, dst):
         root.attrib.pop(attr, None)
     tree.write(dst, encoding='unicode')
     print(f'Wrote {dst}')
-    return ET.tostring(root, encoding='unicode')
-
-
-def inline(html_path, svg_text):
-    with open(html_path, encoding='utf-8') as f:
-        html = f.read()
-    start, end = '<!-- faceplate:start -->', '<!-- faceplate:end -->'
-    a, b = html.find(start), html.find(end)
-    if a < 0 or b < 0:
-        sys.exit(f'{html_path}: faceplate markers not found')
-    html = html[:a + len(start)] + '\n' + svg_text + '\n    ' + html[b:]
-    with open(html_path, 'w', encoding='utf-8') as f:
-        f.write(html)
-    print(f'Inlined into {html_path}')
 
 
 if __name__ == '__main__':
     base = os.path.dirname(os.path.abspath(__file__))
     src = sys.argv[1] if len(sys.argv) > 1 else os.path.join(base, 'duo-faceplate.svg')
-    svg = annotate(src, os.path.join(base, 'duo-faceplate-annotated.svg'))
-    inline(os.path.join(base, 'test.html'), svg)
+    annotate(src, os.path.join(base, 'faceplate.svg'))

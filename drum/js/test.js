@@ -1,16 +1,14 @@
 /**
  * test.js
- * Entry point for drum/test.html — the DRUM manufacturing production test.
+ * The DRUM manufacturing production test, started by shared/js/test-page.js.
  *
  * The list, the built-in 'firmware' and 'cc' tests and the row rendering live in
  * shared/js/test-runner.js; this file defines the DRUM's tests and its own test
  * types (drum pads, sample select notes, sequencer).
  */
 
-import { initMIDI } from '../../shared/js/midi.js';
 import { createTestRunner, setElState, REST_CENTER, REST_LOW } from '../../shared/js/test-runner.js';
 import { DRUM } from './device.js';
-import { DUO } from '../../duo/js/device.js';
 import { initVisualizer } from './visualizer.js';
 import { initTone, setToneCC, muteTone } from './tone.js';
 import { CC_CONTROLS, NOTE_CONTROLS, STEP_LED_IDS, TRACK_STEP_MAP } from './controls.js';
@@ -207,59 +205,59 @@ const TYPES = {
 
 // ---------------------------------------------------------------------------
 
-const statusEl = document.getElementById('midi-status');
+function start({ statusEl, listEl, visualizationEl }) {
+  initVisualizer();
+  initTone(visualizationEl);
 
-initVisualizer();
-initTone(document.getElementById('tone-toggle'));
-initMIDI(statusEl, DRUM, [DUO]);
+  const runner = createTestRunner({
+    tests: TESTS,
+    types: TYPES,
+    firmwareMin: FIRMWARE_MIN_VERSION,
+    faceplateEls,
+    onReset: muteTone,
+    listEl,
+    statusEl,
+  });
 
-// Another instrument was plugged in: switch to its test
-document.addEventListener('midi-other-device', e => {
-  location.replace(`../${e.detail.id}/test.html${location.search}`);
-});
+  document.addEventListener('midi-cc', e => {
+    if (e.detail.cc === TONE_PITCH_CC) setToneCC(e.detail.value);
+  });
 
-const runner = createTestRunner({
-  tests: TESTS,
-  types: TYPES,
-  firmwareMin: FIRMWARE_MIN_VERSION,
-  faceplateEls,
-  onReset: muteTone,
-  listEl: document.getElementById('test-list'),
-  statusEl,
-});
-
-document.addEventListener('midi-cc', e => {
-  if (e.detail.cc === TONE_PITCH_CC) setToneCC(e.detail.value);
-});
-
-document.addEventListener('midi-note-on', e => {
-  const { note, velocity } = e.detail;
-  let touched = false;
-  for (const [t, m] of runner.each('pad')) {
-    if (velocity < PAD_VELOCITY_MIN || NOTE_CONTROLS[note]?.track !== t.track) continue;
-    m.hits++;
-    touched = true;
-  }
-  for (const [, m] of runner.each('notes')) {
-    if (!(note in m.heard)) continue;
-    m.heard[note] = true;
-    // Sample select: a ±1 step from the previous note. Wraparound (first↔last of
-    // the track) is a jump of 7, so it never counts.
-    if (m.last !== null) {
-      if (note === m.last + 1) m.up = true;
-      if (note === m.last - 1) m.down = true;
+  document.addEventListener('midi-note-on', e => {
+    const { note, velocity } = e.detail;
+    let touched = false;
+    for (const [t, m] of runner.each('pad')) {
+      if (velocity < PAD_VELOCITY_MIN || NOTE_CONTROLS[note]?.track !== t.track) continue;
+      m.hits++;
+      touched = true;
     }
-    m.last = note;
-    touched = true;
-  }
-  if (touched) runner.render();
-});
+    for (const [, m] of runner.each('notes')) {
+      if (!(note in m.heard)) continue;
+      m.heard[note] = true;
+      // Sample select: a ±1 step from the previous note. Wraparound (first↔last of
+      // the track) is a jump of 7, so it never counts.
+      if (m.last !== null) {
+        if (note === m.last + 1) m.up = true;
+        if (note === m.last - 1) m.down = true;
+      }
+      m.last = note;
+      touched = true;
+    }
+    if (touched) runner.render();
+  });
 
-document.addEventListener('midi-sequencer-state', e => {
-  const on = e.detail.stepVelocities.slice(0, SEQ_TRACKS * SEQ_STEPS).map(v => v > 0);
-  for (const [, m] of runner.each('sequencer')) {
-    m.current = on;
-    on.forEach((lit, i) => { if (lit) m.seenOn[i] = true; else m.seenOff[i] = true; });
-  }
-  runner.render();
-});
+  document.addEventListener('midi-sequencer-state', e => {
+    const on = e.detail.stepVelocities.slice(0, SEQ_TRACKS * SEQ_STEPS).map(v => v > 0);
+    for (const [, m] of runner.each('sequencer')) {
+      m.current = on;
+      on.forEach((lit, i) => { if (lit) m.seenOn[i] = true; else m.seenOff[i] = true; });
+    }
+    runner.render();
+  });
+}
+
+export default {
+  profile: DRUM,
+  faceplate: new URL('../faceplate.svg', import.meta.url),
+  start,
+};

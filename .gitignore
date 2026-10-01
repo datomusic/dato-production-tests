@@ -1,5 +1,8 @@
 .DS_Store
 *.svg
+# Annotated faceplates, loaded by the test pages
+!drum/faceplate.svg
+!duo/faceplate.svg
 node_modules/
 .claude/*
 !.claude/launch.json

@@ -19,7 +19,9 @@ Vite is dev-server only — there is no build step. Any static server also works
 
 ## Architecture
 
-No build step and no framework. One folder per instrument (`drum/`, `duo/`) plus `shared/`. Each page has its annotated faceplate SVG inlined in the HTML.
+No build step and no framework. One folder per instrument (`drum/`, `duo/`) plus `shared/`. The test pages load the annotated faceplate from `<instrument>/faceplate.svg` (committed; an exception to the `*.svg` gitignore); the DRUM visualizer (`drum/index.html`) has it inlined.
+
+**Test pages:** `<instrument>/test.html` is a bare shell that calls `startTest()` from `shared/js/test-page.js` with the instrument's `js/test.js` default export (`{ profile, faceplate, start }`). `startTest` fetches the faceplate into `#visualization`, calls `start()` (visualizer, test runner, MIDI listeners), then `initMIDI` with autodetect.
 
 **Data flow:** Physical device → USB MIDI → `shared/js/midi.js` (Web MIDI API) → `CustomEvent` on `document` → the instrument's `visualizer.js` / `test.js` → CSS class/transform changes on SVG elements and test rows.
 
@@ -38,8 +40,8 @@ No build step and no framework. One folder per instrument (`drum/`, `duo/`) plus
 ## Regenerating the annotated SVGs
 
 The source SVGs have no semantic IDs (and are gitignored — `*.svg`).
-- DUO: `python3 duo/annotate-svg.py` reads `duo/duo-faceplate.svg`, writes the annotated SVG and inlines it into `duo/test.html` between the `faceplate:start/end` markers.
-- DRUM: `python3 drum/annotate-svg.py <source.svg>` writes the annotated SVG and inlines it into `drum/index.html` only; `drum/test.html` carries its own inlined copy (same IDs) that must be updated by hand.
+- DUO: `python3 duo/annotate-svg.py` reads `duo/duo-faceplate.svg` and writes `duo/faceplate.svg`.
+- DRUM: `python3 drum/annotate-svg.py <source.svg>` writes `drum/faceplate.svg` and inlines it into `drum/index.html`.
 
 ## DUO specifics
 

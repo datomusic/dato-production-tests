@@ -1,6 +1,6 @@
 /**
  * test.js
- * Entry point for duo/test.html — the DUO manufacturing production test.
+ * The DUO manufacturing production test, started by shared/js/test-page.js.
  *
  * What the DUO reports over USB MIDI (duo-imxrt firmware, brains 2):
  *   - CCs for the synth side: 6 pots/sliders + Crush, Delay, Glide (momentary)
@@ -14,11 +14,9 @@
  * not in this test.
  */
 
-import { initMIDI } from '../../shared/js/midi.js';
 import { applyCC } from '../../shared/js/faceplate.js';
 import { createTestRunner, setElState, CC_MAX, REST_CENTER, REST_LOW, REST_HIGH } from '../../shared/js/test-runner.js';
 import { DUO, resetTranspose } from './device.js';
-import { DRUM } from '../../drum/js/device.js';
 import { initVisualizer } from './visualizer.js';
 import { CC_CONTROLS, KEY_NOTES, KEY_IDS, SPEED_KNOB, LENGTH_KNOB } from './controls.js';
 
@@ -187,37 +185,13 @@ const TYPES = {
 
 // ---------------------------------------------------------------------------
 
-const statusEl = document.getElementById('midi-status');
-
-initVisualizer();
-initMIDI(statusEl, DUO, [DRUM]);
-
-// Another instrument was plugged in: switch to its test
-document.addEventListener('midi-other-device', e => {
-  location.replace(`../${e.detail.id}/test.html${location.search}`);
-});
-
 // Measurement state, cleared with the test list
 let clockTimes = [];
 let speedCC = null;
 let noteOn = null;       // { time } of the sounding note, while the sequencer runs
 let pendingGate = null;  // { ms, time } waiting to see whether the next note cut it
 
-const runner = createTestRunner({
-  tests: TESTS,
-  types: TYPES,
-  firmwareMin: FIRMWARE_MIN_VERSION,
-  faceplateEls,
-  onReset: () => {
-    running = false;
-    clockTimes = [];
-    speedCC = null;
-    noteOn = null;
-    pendingGate = null;
-  },
-  listEl: document.getElementById('test-list'),
-  statusEl,
-});
+let runner = null;
 
 /** Feed a derived pot position to its test and turn the drawn knob to match. */
 function observeKnob(id, cc) {
@@ -235,69 +209,95 @@ function clockPeriod(times) {
   return num / den;
 }
 
-// Speed: clock period over the last CLOCK_WINDOW_MS.
-document.addEventListener('midi-clock', e => {
-  const now = e.detail.time;
-  clockTimes.push(now);
-  while (clockTimes.length && clockTimes[0] < now - CLOCK_WINDOW_MS) clockTimes.shift();
-  if (clockTimes.length < CLOCK_MIN_PULSES || now - clockTimes[0] < CLOCK_MIN_SPAN_MS) return;
-  const interval = clockPeriod(clockTimes);
-  const cc = potToCC(bpmToPot(60000 / (interval * CLOCK_PPQN)));
-  if (cc === speedCC) return;
-  speedCC = cc;
-  observeKnob('speed', cc);
-});
+function start({ statusEl, listEl }) {
+  initVisualizer();
 
-document.addEventListener('midi-transport', e => {
-  running = e.detail.type !== 'stop';
-  for (const [, m] of runner.each('play')) {
-    if (running) m.started = true;
-    else if (m.started) m.stopped = true;
-  }
-  runner.render();
-});
+  runner = createTestRunner({
+    tests: TESTS,
+    types: TYPES,
+    firmwareMin: FIRMWARE_MIN_VERSION,
+    faceplateEls,
+    onReset: () => {
+      running = false;
+      clockTimes = [];
+      speedCC = null;
+      noteOn = null;
+      pendingGate = null;
+    },
+    listEl,
+    statusEl,
+  });
 
-document.addEventListener('midi-note-on', e => {
-  const { note, velocity, time } = e.detail;
+  // Speed: clock period over the last CLOCK_WINDOW_MS.
+  document.addEventListener('midi-clock', e => {
+    const now = e.detail.time;
+    clockTimes.push(now);
+    while (clockTimes.length && clockTimes[0] < now - CLOCK_WINDOW_MS) clockTimes.shift();
+    if (clockTimes.length < CLOCK_MIN_PULSES || now - clockTimes[0] < CLOCK_MIN_SPAN_MS) return;
+    const interval = clockPeriod(clockTimes);
+    const cc = potToCC(bpmToPot(60000 / (interval * CLOCK_PPQN)));
+    if (cc === speedCC) return;
+    speedCC = cc;
+    observeKnob('speed', cc);
+  });
 
-  // Length: a note that was cut off by this one doesn't count.
-  if (pendingGate && time - pendingGate.time < NOTE_CUT_MS) pendingGate = null;
-  noteOn = running ? { time } : null;
-
-  for (const [, m] of runner.each('accent')) {
-    if (velocity >= ACCENT_VELOCITY) m.accented = true;
-    m.lastVelocity = velocity;
-  }
-
-  // Keys: only while stopped, since the running sequencer plays scale notes by itself.
-  const key = KEY_NOTES.indexOf(note);
-  if (key >= 0 && !running) {
-    for (const [, m] of runner.each('keys')) {
-      m.heard[key] = true;
-      m.last = key;
+  document.addEventListener('midi-transport', e => {
+    running = e.detail.type !== 'stop';
+    for (const [, m] of runner.each('play')) {
+      if (running) m.started = true;
+      else if (m.started) m.stopped = true;
     }
-  }
+    runner.render();
+  });
 
-  for (const [, m] of runner.each('transpose')) {
-    const wasPassed = m.up && m.down;
-    if (note > HIGHEST_KEY) m.up = true;
-    if (note < LOWEST_KEY) m.down = true;
-    // Done: put the keyboard back on the plain scale for the key test.
-    if (m.up && m.down && !wasPassed) resetTranspose();
-  }
+  document.addEventListener('midi-note-on', e => {
+    const { note, velocity, time } = e.detail;
 
-  runner.render();
-});
+    // Length: a note that was cut off by this one doesn't count.
+    if (pendingGate && time - pendingGate.time < NOTE_CUT_MS) pendingGate = null;
+    noteOn = running ? { time } : null;
 
-document.addEventListener('midi-note-off', e => {
-  const { time } = e.detail;
-  if (!noteOn) return;
-  const gate = { ms: time - noteOn.time, time };
-  noteOn = null;
-  pendingGate = gate;
-  setTimeout(() => {
-    if (pendingGate !== gate) return;
-    pendingGate = null;
-    observeKnob('length', potToCC(gateToPot(gate.ms)));
-  }, NOTE_SETTLE_MS);
-});
+    for (const [, m] of runner.each('accent')) {
+      if (velocity >= ACCENT_VELOCITY) m.accented = true;
+      m.lastVelocity = velocity;
+    }
+
+    // Keys: only while stopped, since the running sequencer plays scale notes by itself.
+    const key = KEY_NOTES.indexOf(note);
+    if (key >= 0 && !running) {
+      for (const [, m] of runner.each('keys')) {
+        m.heard[key] = true;
+        m.last = key;
+      }
+    }
+
+    for (const [, m] of runner.each('transpose')) {
+      const wasPassed = m.up && m.down;
+      if (note > HIGHEST_KEY) m.up = true;
+      if (note < LOWEST_KEY) m.down = true;
+      // Done: put the keyboard back on the plain scale for the key test.
+      if (m.up && m.down && !wasPassed) resetTranspose();
+    }
+
+    runner.render();
+  });
+
+  document.addEventListener('midi-note-off', e => {
+    const { time } = e.detail;
+    if (!noteOn) return;
+    const gate = { ms: time - noteOn.time, time };
+    noteOn = null;
+    pendingGate = gate;
+    setTimeout(() => {
+      if (pendingGate !== gate) return;
+      pendingGate = null;
+      observeKnob('length', potToCC(gateToPot(gate.ms)));
+    }, NOTE_SETTLE_MS);
+  });
+}
+
+export default {
+  profile: DUO,
+  faceplate: new URL('../faceplate.svg', import.meta.url),
+  start,
+};
