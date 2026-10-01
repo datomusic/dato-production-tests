@@ -10,8 +10,7 @@ ES modules require HTTP — open via a local server. Vite gives live reload (CSS
 npm install   # once
 npm run dev
 # http://localhost:5173                 — landing page
-# http://localhost:5173/drum/test.html  — DRUM production test
-# http://localhost:5173/duo/test.html   — DUO production test
+# http://localhost:5173/test.html       — production test (detects DRUM / DUO; ?device=drum|duo)
 # http://localhost:5173/drum/index.html?debug=1 — DRUM visualizer, SVG ID overlay + MIDI console logging
 ```
 
@@ -21,13 +20,13 @@ Vite is dev-server only — there is no build step. Any static server also works
 
 No build step and no framework. One folder per instrument (`drum/`, `duo/`) plus `shared/`. The test pages load the annotated faceplate from `<instrument>/faceplate.svg` (committed; an exception to the `*.svg` gitignore); the DRUM visualizer (`drum/index.html`) has it inlined.
 
-**Test pages:** `<instrument>/test.html` is a bare shell that calls `startTest()` from `shared/js/test-page.js` with the instrument's `js/test.js` default export (`{ profile, faceplate, start }`). `startTest` fetches the faceplate into `#visualization`, calls `start()` (visualizer, test runner, MIDI listeners), then `initMIDI` with autodetect.
+**Test page:** the root `test.html` serves every instrument via `shared/js/test-page.js`. With `?device=drum|duo` it imports that instrument's `js/test.js` (default export `{ profile, css, faceplate, start }`), loads its stylesheets and faceplate into `#visualization`, calls `start()` (visualizer, test runner, MIDI listeners), then `initMIDI` with autodetect. Without `?device` it only detects. `drum/test.html` and `duo/test.html` are redirect stubs.
 
 **Data flow:** Physical device → USB MIDI → `shared/js/midi.js` (Web MIDI API) → `CustomEvent` on `document` → the instrument's `visualizer.js` / `test.js` → CSS class/transform changes on SVG elements and test rows.
 
 **`shared/js/midi.js`** owns all Web MIDI API interaction and dispatches typed events (`midi-cc`, `midi-note-on`, `midi-note-off`, `midi-clock`, `midi-transport`, `midi-firmware-version`, `midi-connected`, …). Everything instrument-specific goes through a **device profile** (`drum/js/device.js`, `duo/js/device.js`): firmware request, SysEx parsing, extra requests/polling on connect.
 
-**Autodetect:** each test page passes the other instrument's profile to `initMIDI` as well. On connect both firmware version requests go out; the dialect of the reply identifies the device. The page's own profile only runs `onConnected()` once its device has answered (or the retries run out); if the other one answers, `midi-other-device` fires and the page `location.replace`s to that instrument's `test.html`. So plugging a DUO into an open DRUM test (or vice versa) switches pages.
+**Autodetect:** the test page passes the other instrument's profile to `initMIDI` as well (or `null` plus both, when only detecting). On connect both firmware version requests go out; the dialect of the reply identifies the device. The page's own profile only runs `onConnected()` once its device has answered (or the retries run out); if the other one answers, `midi-other-device` fires and the page reloads with that `?device`. Switching by reload means no teardown: every module registers its listeners once and for good, and the instruments' CSS (global selectors like `.button`, `#play-outer`) never meets in one document.
 
 **`shared/js/test-runner.js`** is the production test list: one row per test, fill band, rest zone, cursor, pass "punch", faceplate state classes (`.test-idle/.test-active/.test-done`). Built-in test types: `firmware`, `serial`, `cc`. Instruments add their own types as hook objects (see the header comment) — the DRUM adds `notes`, `pad`, `sequencer`; the DUO adds `accent`, `keys`, `transpose`, `play`.
 

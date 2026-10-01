@@ -1,6 +1,6 @@
 /**
  * test.js
- * The DRUM manufacturing production test, started by shared/js/test-page.js.
+ * The DRUM manufacturing production test, loaded by shared/js/test-page.js.
  *
  * The list, the built-in 'firmware' and 'cc' tests and the row rendering live in
  * shared/js/test-runner.js; this file defines the DRUM's tests and its own test
@@ -258,6 +258,7 @@ function start({ statusEl, listEl, visualizationEl }) {
 
 export default {
   profile: DRUM,
+  css: [new URL('../css/drum.css', import.meta.url), new URL('../css/test.css', import.meta.url)],
   faceplate: new URL('../faceplate.svg', import.meta.url),
   start,
 };

@@ -1,6 +1,6 @@
 /**
  * test.js
- * The DUO manufacturing production test, started by shared/js/test-page.js.
+ * The DUO manufacturing production test, loaded by shared/js/test-page.js.
  *
  * What the DUO reports over USB MIDI (duo-imxrt firmware, brains 2):
  *   - CCs for the synth side: 6 pots/sliders + Crush, Delay, Glide (momentary)
@@ -298,6 +298,7 @@ function start({ statusEl, listEl }) {
 
 export default {
   profile: DUO,
+  css: [new URL('../css/test.css', import.meta.url)],
   faceplate: new URL('../faceplate.svg', import.meta.url),
   start,
 };

@@ -9,12 +9,15 @@ which is still here.
 
 | Page | |
 |---|---|
-| `drum/test.html` | DRUM production test |
-| `duo/test.html` | DUO production test |
+| `test.html` | Production test — detects whether a DRUM or DUO is plugged in |
 | `drum/index.html` | DRUM MIDI visualizer (with MIDI channel / slider mode settings) |
 | `drum/sample-browser.html` | DRUM factory sample browser |
 
-`test.html` at the root redirects to the DRUM test so existing bookmarks keep working.
+The test page asks the device for its firmware version in both instruments'
+SysEx dialects; the one that answers decides which test is shown
+(`test.html?device=drum` / `?device=duo`). Plugging in the other instrument on an
+open page switches the test, so one page can stay open all day.
+`drum/test.html` and `duo/test.html` redirect there so existing bookmarks keep working.
 
 ## Setup
 

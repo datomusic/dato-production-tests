@@ -34,7 +34,8 @@
  * On connect their firmware version requests are sent along with the page's own;
  * the dialect of the first reply tells which instrument is plugged in. The page's
  * own device is only set up (onConnected) once it has answered; if another one
- * answers, 'midi-other-device' is dispatched so the page can switch.
+ * answers, 'midi-other-device' is dispatched so the page can switch. With no
+ * device of its own (null) the page only detects: every answer is 'other'.
  */
 
 let midiAccess = null;
@@ -81,7 +82,7 @@ function requestFirmwareVersionWithRetry() {
       return;
     }
     attempts++;
-    device.requestFirmwareVersion();
+    device?.requestFirmwareVersion();
     // Probe the other instruments until something answers
     if (!identified) for (const other of otherDevices) other.requestFirmwareVersion();
   };
@@ -100,12 +101,12 @@ function stopVersionRetry() {
 function startDevice() {
   if (started) return;
   started = true;
-  device.onConnected?.();
+  device?.onConnected?.();
 }
 
 /**
  * @param {Element}  statusEl       status line
- * @param {object}   deviceProfile  the page's instrument
+ * @param {object}   deviceProfile  the page's instrument; null to only detect which one is plugged in
  * @param {object[]} [others]       other instruments to recognise (see Autodetect above)
  */
 export async function initMIDI(statusEl, deviceProfile, others = []) {
@@ -143,7 +144,7 @@ export async function initMIDI(statusEl, deviceProfile, others = []) {
       dispatch('midi-connected', { name: names });
       onConnected();
     } else {
-      const names = [device, ...otherDevices].map(p => p.name).join(' or ');
+      const names = [device, ...otherDevices].filter(Boolean).map(p => p.name).join(' or ');
       setStatus(`No MIDI input – plug in a ${names}`);
     }
   }
@@ -165,7 +166,7 @@ export async function initMIDI(statusEl, deviceProfile, others = []) {
       dispatch('midi-connected', { name: port.name });
       onConnected();
     } else {
-      device.onDisconnected?.();
+      device?.onDisconnected?.();
       stopVersionRetry();
       deviceName = null;
       firmwareVersion = null;
@@ -188,6 +189,7 @@ function onSysEx(data) {
     onOtherDevice(other);
     return;
   }
+  if (!device) return;
   if (!identified && device.matches(data)) {
     identified = device;
     startDevice();
@@ -206,9 +208,9 @@ function onOtherDevice(other) {
   if (identified === other) return;
   identified = other;
   stopVersionRetry();
-  if (started) device.onDisconnected?.();
+  if (started) device?.onDisconnected?.();
   started = false;
-  console.log(`sysex: ${other.name} answered – not a ${device.name}`);
+  console.log(device ? `sysex: ${other.name} answered – not a ${device.name}` : `sysex: ${other.name} answered`);
   setStatus(`${other.name} connected`);
   dispatch('midi-other-device', { id: other.id, name: other.name });
 }

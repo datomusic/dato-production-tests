@@ -1,6 +1,25 @@
 <!DOCTYPE html>
-<!-- The DRUM production test moved to drum/test.html; keeps old bookmarks working. -->
-<meta charset="UTF-8">
-<title>Dato DRUM — Production Test</title>
-<script>location.replace('drum/test.html' + location.search);</script>
-<a href="drum/test.html">Dato DRUM production test</a>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dato — Production Test</title>
+  <link rel="stylesheet" href="shared/css/base.css">
+  <link rel="stylesheet" href="shared/css/test.css">
+  <!-- The instrument's stylesheets are added by shared/js/test-page.js -->
+</head>
+<body>
+  <div id="visualization">
+    <h1 id="test-title">Production test</h1>
+    <!-- The instrument's faceplate.svg (and the DRUM's tone toggle) are added here -->
+  </div>
+  <div id="test-panel">
+    <ol id="test-list"></ol>
+    <div id="midi-status">Requesting MIDI access…</div>
+  </div>
+  <script type="module">
+    import { startTestPage } from './shared/js/test-page.js';
+    startTestPage();
+  </script>
+</body>
+</html>

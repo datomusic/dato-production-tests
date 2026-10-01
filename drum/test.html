@@ -1,27 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dato DRUM — Production Test</title>
-  <link rel="stylesheet" href="../shared/css/base.css">
-  <link rel="stylesheet" href="../shared/css/test.css">
-  <link rel="stylesheet" href="css/drum.css">
-  <link rel="stylesheet" href="css/test.css">
-</head>
-<body>
-  <div id="visualization">
-    <h1 id="test-title">Production test</h1>
-    <!-- faceplate.svg (shared/js/test-page.js) and the tone toggle (js/tone.js) are added here -->
-  </div>
-  <div id="test-panel">
-    <ol id="test-list"></ol>
-    <div id="midi-status">Requesting MIDI access…</div>
-  </div>
-  <script type="module">
-    import { startTest } from '../shared/js/test-page.js';
-    import test from './js/test.js';
-    startTest(test);
-  </script>
-</body>
-</html>
+<!-- The DRUM production test moved to /test.html; keeps old bookmarks working. -->
+<meta charset="UTF-8">
+<title>Dato DRUM — Production Test</title>
+<script>
+  const q = new URLSearchParams(location.search);
+  q.set('device', 'drum');
+  location.replace('../test.html?' + q);
+</script>
+<a href="../test.html?device=drum">Dato DRUM production test</a>
